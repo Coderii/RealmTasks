@@ -22,7 +22,22 @@ import Cartography
 import RealmSwift
 import UIKit
 
-class ContainerViewController: UIViewController {
+// MARK: Container View Controller Protocol
+
+protocol ContainerNavigationProtocol {
+    var createTopViewController: (() -> (UIViewController))? {get set}
+    var topViewController: UIViewController? {get set}
+    var createBottomViewController: (() -> (UIViewController))? {get set}
+    var bottomViewController: UIViewController? {get set}
+
+    func auxViewController(position: NavDirection) -> UIViewController?
+    func createAuxViewController(position: NavDirection) -> (() -> (UIViewController))?
+    
+}
+
+// MARK: Container View Controller
+
+class ContainerViewController: UIViewController, ContainerNavigationProtocol {
     private var titleLabel = UILabel()
     private var titleTopConstraint: NSLayoutConstraint?
     override var title: String? {
@@ -50,7 +65,7 @@ class ContainerViewController: UIViewController {
 
     private func addChildVC() {
         let firstList = try! Realm().objects(TaskList.self).first!
-        let vc = ViewController(parent: firstList, colors: UIColor.taskColors())
+        let vc = ViewController(navigation: self, parent: firstList, colors: UIColor.taskColors())
         title = firstList.text
         addChildViewController(vc)
         view.addSubview(vc.view)
@@ -80,4 +95,19 @@ class ContainerViewController: UIViewController {
             titleTopConstraint = (titleLabel.top == titleLabel.superview!.top + 20)
         }
     }
+
+    // MARK: ContainerNavigationProtocol methods
+    var createTopViewController: (() -> (UIViewController))?
+    var topViewController: UIViewController?
+    var createBottomViewController: (() -> (UIViewController))?
+    var bottomViewController: UIViewController?
+
+    func auxViewController(position: NavDirection) -> UIViewController? {
+        return (position == .Up) ? topViewController : bottomViewController
+    }
+
+    func createAuxViewController(position: NavDirection) -> (() -> (UIViewController))? {
+        return (position == .Up) ? createTopViewController : createBottomViewController
+    }
+
 }

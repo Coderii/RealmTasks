@@ -163,7 +163,6 @@
 			children = (
 				225201941D3DD648009E45FA /* AppDelegate.swift */,
 				2252019C1D3DD648009E45FA /* CellTextView.swift */,
-				E8A1E64F1D59354500D8B04A /* ContainerViewController.swift */,
 				225201981D3DD648009E45FA /* Info.plist */,
 				225201951D3DD648009E45FA /* iOS.xcassets */,
 				225201961D3DD648009E45FA /* LaunchScreen.storyboard */,
@@ -171,6 +170,7 @@
 				220C33491D3DE1F40043A885 /* OnboardView.swift */,
 				22092D851D5C5BCB0016E757 /* NavHintView.swift */,
 				2252019A1D3DD648009E45FA /* TableViewCell.swift */,
+				E8A1E64F1D59354500D8B04A /* ContainerViewController.swift */,
 				2252019D1D3DD648009E45FA /* ViewController.swift */,
 				9C24AA031D8FED0800192CE3 /* ViewController */,
 			);

@@ -40,7 +40,7 @@ extension UIView {
 
 private var tableViewBoundsKVOContext = 0
 
-private enum NavDirection {
+enum NavDirection {
     case Up, Down
 }
 
@@ -98,29 +98,34 @@ final class ViewController<Item: Object, Parent: Object where Item: CellPresenta
     private let onboardView = OnboardView()
 
     // Top/Bottom View Controllers
-    private let createTopViewController: (() -> (UIViewController))?
-    private var topViewController: UIViewController?
-    private let createBottomViewController: (() -> (UIViewController))?
-    private var bottomViewController: UIViewController?
+//    private let createTopViewController: (() -> (UIViewController))?
+//    private var topViewController: UIViewController?
+//    private let createBottomViewController: (() -> (UIViewController))?
+//    private var bottomViewController: UIViewController?
 
     // MARK: MTT
     private var listPresenter: ListPresenter<Item, Parent>!
+    private var navigation: ContainerNavigationProtocol!
 
     // MARK: View Lifecycle
 
-    init(parent: Parent, colors: [UIColor]) {
+    init(navigation navigator: ContainerNavigationProtocol, parent: Parent, colors: [UIColor]) {
+        navigation = navigator
+
         if Item.self == Task.self {
-            createTopViewController = {
+            navigation.createTopViewController = {
                 ViewController<TaskList, TaskListList>(
+                    navigation: navigator,
                     parent: try! Realm().objects(TaskListList.self).first!,
                     colors: UIColor.listColors()
                 )
             }
-            createBottomViewController = nil
+            navigation.createBottomViewController = nil
         } else {
-            createTopViewController = nil
-            createBottomViewController = {
+            navigation.createTopViewController = nil
+            navigation.createBottomViewController = {
                 ViewController<Task, TaskList>(
+                    navigation: navigator,
                     parent: try! Realm().objects(TaskList.self).first!,
                     colors: UIColor.taskColors()
                 )
@@ -259,7 +264,7 @@ final class ViewController<Item: Object, Parent: Object where Item: CellPresenta
         if let indexPath = tableView.indexPathForRowAtPoint(location),
             typedCell = tableView.cellForRowAtIndexPath(indexPath) as? TableViewCell<Item> {
             cell = typedCell
-            if createBottomViewController != nil && location.x > tableView.bounds.width / 2 {
+            if navigation.createBottomViewController != nil && location.x > tableView.bounds.width / 2 {
                 navigateToBottomViewController(cell.item)
                 return
             }
@@ -279,7 +284,8 @@ final class ViewController<Item: Object, Parent: Object where Item: CellPresenta
     }
 
     private func navigateToBottomViewController(item: Item) {
-        bottomViewController = ViewController<Task, TaskList>(
+        navigation.bottomViewController = ViewController<Task, TaskList>(
+            navigation: navigation,
             parent: item as! TaskList,
             colors: UIColor.taskColors()
         )
@@ -288,7 +294,7 @@ final class ViewController<Item: Object, Parent: Object where Item: CellPresenta
     }
 
     private func startMovingToNextViewController(direction: NavDirection) {
-        let nextVC = direction == .Up ? topViewController! : bottomViewController!
+        let nextVC = direction == .Up ? navigation.topViewController! : navigation.bottomViewController!
         let parentVC = parentViewController!
         parentVC.addChildViewController(nextVC)
         parentVC.view.insertSubview(nextVC.view, atIndex: 1)
@@ -306,7 +312,7 @@ final class ViewController<Item: Object, Parent: Object where Item: CellPresenta
     }
 
     private func finishMovingToNextViewController(direction: NavDirection) {
-        let nextVC = direction == .Up ? topViewController! : bottomViewController!
+        let nextVC = direction == .Up ? navigation.topViewController! : navigation.bottomViewController!
         let parentVC = parentViewController!
         willMoveToParentViewController(nil)
         parentVC.title = nextVC.title
@@ -342,19 +348,19 @@ final class ViewController<Item: Object, Parent: Object where Item: CellPresenta
             }
         }
 
-        if distancePulledUp > tableView.rowHeight, let createBottomViewController = createBottomViewController {
-            if bottomViewController === parentViewController?.childViewControllers.last { return }
-            if bottomViewController == nil {
-                bottomViewController = createBottomViewController()
+        if distancePulledUp > tableView.rowHeight, let createBottomViewController = navigation.createBottomViewController {
+            if navigation.bottomViewController === parentViewController?.childViewControllers.last { return }
+            if navigation.bottomViewController == nil {
+                navigation.bottomViewController = createBottomViewController()
             }
             startMovingToNextViewController(.Down)
             return
         } else {
-            removeVC(bottomViewController)
+            removeVC(navigation.bottomViewController)
         }
 
         guard distancePulledDown > 0 else {
-            removeVC(topViewController)
+            removeVC(navigation.topViewController)
             return
         }
 
@@ -384,10 +390,10 @@ final class ViewController<Item: Object, Parent: Object where Item: CellPresenta
             }
             placeHolderCell.layer.transform = CATransform3DIdentity
             placeHolderCell.textView.text = "Release to Create Item"
-        } else if let createTopViewController = createTopViewController {
-            if topViewController === parentViewController?.childViewControllers.last { return }
-            if topViewController == nil {
-                topViewController = createTopViewController()
+        } else if let createTopViewController = navigation.createTopViewController {
+            if navigation.topViewController === parentViewController?.childViewControllers.last { return }
+            if navigation.topViewController == nil {
+                navigation.topViewController = createTopViewController()
             }
             startMovingToNextViewController(.Up)
             placeHolderCell.navHintView.hintText = "Switch to Lists"
@@ -404,14 +410,14 @@ final class ViewController<Item: Object, Parent: Object where Item: CellPresenta
         }
 
         if scrollView.dragging {
-            removeVC(topViewController)
+            removeVC(navigation.topViewController)
             placeHolderCell.alpha = min(1, distancePulledDown / tableView.rowHeight)
         }
     }
 
     func scrollViewDidEndDragging(scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         if distancePulledUp > tableView.rowHeight {
-            if bottomViewController === parentViewController?.childViewControllers.last {
+            if navigation.bottomViewController === parentViewController?.childViewControllers.last {
                 finishMovingToNextViewController(.Down)
             } else {
                 let itemsToDelete = items.filter("completed = true")
@@ -430,7 +436,7 @@ final class ViewController<Item: Object, Parent: Object where Item: CellPresenta
         guard distancePulledDown > tableView.rowHeight else { return }
 
         if distancePulledDown > tableView.rowHeight * 2 &&
-            topViewController === parentViewController?.childViewControllers.last {
+            navigation.topViewController === parentViewController?.childViewControllers.last {
             finishMovingToNextViewController(.Up)
             return
         }
